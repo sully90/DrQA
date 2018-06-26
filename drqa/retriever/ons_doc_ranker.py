@@ -1,4 +1,7 @@
 """Ranks documents using the ONS search service"""
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class OnsDocRanker(object):
@@ -10,7 +13,7 @@ class OnsDocRanker(object):
         url_encoded_query = parse.quote(query)
         return self.host + self.target + "?q=%s" % url_encoded_query
 
-    def search(self, query):
+    def search(self, query, k):
         import json
         import urllib.request
 
@@ -22,12 +25,14 @@ class OnsDocRanker(object):
         request.add_header('Content-Type', 'application/json; charset=utf-8')
 
         content_types = [
-            content_type.article.name,
             content_type.bulletin.name,
-            content_type.static_adhoc.name
+            content_type.article.name
         ]
 
-        form = {"filter": content_types}
+        form = {
+            "filter": content_types,
+            "size": k
+        }
         form_data = json.dumps(form)
         form_data_bytes = form_data.encode('utf-8')
 
@@ -44,7 +49,7 @@ class OnsDocRanker(object):
         """
         import json
 
-        response = self.search(query)
+        response = self.search(query, k)
         response_data = response.read()
 
         json_data = json.loads(response_data)
@@ -53,16 +58,12 @@ class OnsDocRanker(object):
             result = json_data['result']
             hits = result['results']
 
-            i = 0
-            top_k_hits = []
-            while i + 1 < k and i + 1 < len(hits):
-                top_k_hits.append(hits[i])
-                i += 1
+            logger.info("Got %d search results (k=%d)" % (len(hits), k))
 
             # Return IDs and scores
             ids = []
             scores = []
-            for hit in top_k_hits:
+            for hit in hits:
                 ids.append(hit['uri'])
                 scores.append(hit['_score'])
 
