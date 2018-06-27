@@ -15,15 +15,17 @@ class OnsDocRanker(object):
         from drqa.retriever.utils import filter_word
 
         # Remove stop words
-        tokens = [w for w in query.split() if filter_word(w) is False]
+        tokens = [w.lower() for w in query.split() if filter_word(w) is False]
 
-        # Build bigrams
-        bigrams = [" ".join(b) for b in nltk.bigrams(tokens)]
+        bigrams = [b for b in nltk.bigrams(tokens)]
 
-        url_encoded_queries = [parse.quote(q) for q in bigrams]
-        # Add original query
-        original_filtered_query = " ".join(tokens)
-        url_encoded_queries.append(parse.quote(original_filtered_query))
+        url_encoded_queries = [parse.quote(" ".join(b)) for b in bigrams]
+
+        # Combine and url encode
+        filtered_query = " ".join(tokens)
+
+        # Add filtered and unfiltered queries
+        url_encoded_queries.extend([parse.quote(filtered_query), parse.quote(query.lower())])
 
         # Remove dupes
         url_encoded_queries = list(set(url_encoded_queries))
@@ -35,6 +37,7 @@ class OnsDocRanker(object):
     def search(query, k):
         import urllib
         import json
+        import numpy as np
         from drqa.retriever.ons import content_type
 
         """
@@ -49,10 +52,11 @@ class OnsDocRanker(object):
         request = urllib.request.Request(query)
         request.add_header('Content-Type', 'application/json; charset=utf-8')
 
-        content_types = [
+        content_types: List[str] = [
             content_type.bulletin.name,
             content_type.article.name,
-            content_type.static_qmi.name
+            content_type.static_adhoc.name,
+            content_type.static_foi.name
         ]
 
         form = {
@@ -79,7 +83,16 @@ class OnsDocRanker(object):
                 ids.append(hit['uri'])
                 scores.append(hit['_score'])
 
-        return ids, scores
+        # Sort and return
+        ids = np.array(ids)
+        scores = np.array(scores)
+
+        inds = scores.argsort()
+
+        sorted_ids: np.ndarray = ids[inds]
+        sorted_scores: np.ndarray = scores[inds]
+
+        return sorted_ids.tolist(), sorted_scores.tolist()
 
     def closest_docs(self, query, k=1):
         """
@@ -93,13 +106,22 @@ class OnsDocRanker(object):
 
         logger.info("Targets: %s" % targets)
 
-        ids = []
-        scores = []
+        collected_hits = {}
 
         for target in targets:
             target_ids, target_scores = self.search(target, k)
-            ids.extend(target_ids)
-            scores.extend(target_scores)
+
+            for target_id, target_score in zip(target_ids, target_scores):
+                if target_id not in collected_hits:
+                    collected_hits[target_id] = target_score
+                elif collected_hits[target_id] < target_score:
+                    collected_hits[target_id] = target_score
+
+        ids = []
+        scores = []
+        for target_id in collected_hits:
+            ids.append(target_id)
+            scores.append(collected_hits[target_id])
 
         return ids, scores
 
