@@ -8,7 +8,7 @@ class OnsSearchDB(DocDB):
     Implements get_doc_text(doc_id).
     """
     host = 'http://localhost:5000'
-    target = '/search'
+    target = '/search/uri'
 
     def __init__(self, **kwargs):
         pass

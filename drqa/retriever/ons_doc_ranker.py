@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class OnsDocRanker(object):
     host = 'http://localhost:5000'
-    target = '/search/conceptual/ons'
+    target = '/search/conceptual/ons/content'
 
     def get_urls_for_query(self, query: str) -> List[str]:
         import nltk
@@ -72,9 +72,8 @@ class OnsDocRanker(object):
 
         json_data = json.loads(response_data)
 
-        if 'result' in json_data:
-            result = json_data['result']
-            hits = result['results']
+        if 'results' in json_data:
+            hits = json_data['results']
 
             logger.info("Got %d search results (k=%d)" % (len(hits), k))
 
