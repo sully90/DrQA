@@ -18,7 +18,7 @@ class OnsSearchDB(DocDB):
         url_encoded_id = parse.quote(doc_id)
         return self.host + self.target + url_encoded_id
 
-    def get_page(self, doc_id) -> dict:
+    def get_page(self, doc_id: str) -> dict:
         import json
         from urllib import request
 

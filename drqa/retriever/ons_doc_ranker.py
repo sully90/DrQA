@@ -49,14 +49,14 @@ class OnsDocRanker(object):
         ids = []
         scores = []
 
-        request = urllib.request.Request(query)
+        request = urllib.request.Request(query + "&size=%d" % k)
         request.add_header('Content-Type', 'application/json; charset=utf-8')
 
         content_types: List[str] = [
             content_type.bulletin.name,
-            content_type.article.name,
-            content_type.static_adhoc.name,
-            content_type.static_foi.name
+            # content_type.article.name,
+            # content_type.static_adhoc.name,
+            # content_type.product_page.name
         ]
 
         form = {
